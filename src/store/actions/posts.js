@@ -1,8 +1,14 @@
-import { SET_POSTS, ADD_COMMENT } from './actionTypes'
+import {
+    SET_POSTS,
+    ADD_COMMENT,
+    CREATING_POST,
+    POST_CREATED
+} from './actionTypes'
 import axios from 'axios'
 
 export const addPost = post => {
     return dispatch => {
+        dispatch(creatingPost())
         axios({
             url: 'uploadImage',
             baseURL: 'https://us-central1-lambe-fsmf.cloudfunctions.net',
@@ -16,7 +22,10 @@ export const addPost = post => {
             post.image = res.data.imageUrl
             axios.post('/posts.json', { ...post })
             .catch(err => console.log(err))
-            .then(res => console.log(res.data))
+            .then(res => {
+                dispatch(fetchPosts())
+                dispatch(postCreated())
+            })
         })
     }
     
@@ -27,10 +36,24 @@ export const addPost = post => {
 }
 
 export const addComment = payload => {
-    return {
-        type: ADD_COMMENT,
-        payload: payload
+    return dispatch => {
+        axios.get(`/posts/${payload.postId}.json`)
+            .catch(err => console.log(err))
+            .then(res => {
+                const comments = res.data.comments || []
+                comments.push(payload.comment)
+                axios.patch(`/posts/${payload.postId}.json`, { comments })
+                    .catch(err => console.log(err))
+                    .then(res => {
+                        dispatch(fetchPosts())
+                    })
+            })
     }
+
+    // return {
+    //     type: ADD_COMMENT,
+    //     payload: payload
+    // }
 }
 
 export const setPosts = posts => {
@@ -54,7 +77,19 @@ export const fetchPosts = () => {
                     })
                 }
 
-                dispatch(setPosts(posts))
+                dispatch(setPosts(posts.reverse()))
             })
+    }
+}
+
+export const creatingPost = () => {
+    return {
+        type: CREATING_POST
+    }
+}
+
+export const postCreated = () => {
+    return {
+        type: POST_CREATED
     }
 }
